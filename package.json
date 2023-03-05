@@ -1,0 +1,43 @@
+{
+  "name": "dao-vs-dao",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "npx hardhat compile",
+    "build:clean": "npx hardhat clean && npx hardhat compile",
+    "test": "npx hardhat test"
+  },
+  "keywords": [],
+  "author": "0xSwego",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "@nomiclabs/hardhat-etherscan": "^3.1.5",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
+    "@openzeppelin/contracts-upgradeable": "^4.8.2",
+    "@openzeppelin/hardhat-upgrades": "^1.22.1",
+    "@typechain/ethers-v5": "^10.1.1",
+    "@typechain/hardhat": "^6.1.4",
+    "@types/mocha": "^10.0.1",
+    "base64-sol": "^1.1.0",
+    "chai": "^4.3.6",
+    "dotenv": "^16.0.3",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.7.1",
+    "hardhat": "^2.12.6",
+    "hardhat-contract-sizer": "^2.6.1",
+    "hardhat-deploy": "^0.11.22",
+    "mocha": "^10.1.0",
+    "solidity-coverage": "^0.8.2",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.1.0",
+    "typescript": "^4.8.2"
+  },
+  "mocha": {
+    "spec": "./**/*test.ts",
+    "ignore": "./node_modules/**",
+    "require": "ts-node/register/files",
+    "timeout": 30000
+  }
+}
