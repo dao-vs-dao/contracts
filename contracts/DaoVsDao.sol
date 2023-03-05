@@ -17,6 +17,8 @@ contract DaoVsDao is
   EditedERC20Upgradeable,
   DaoVsDaoStorageV1
 {
+  uint256 constant WORTH_PERCENTAGE_TO_PERFORM_SWAP = 120;
+
   /* ========== EVENTS ========== */
 
   /* ========== CONSTRUCTOR & INITIALIZER ========== */
@@ -157,11 +159,15 @@ contract DaoVsDao is
     require(players[msg.sender], "User isn't a player");
     Coordinates memory _coordsSender = userCoord[msg.sender];
     require(isNeighbor(_coords, _coordsSender), "Swap too far from user coords");
+    require(_coords.row >= _coordsSender.row, "Cannot swap with a lower row");
 
     // check the attacked user's worth
     address attackedUser = lands[_coords.realm][_coords.row][_coords.column];
     if (attackedUser != address(0))
-      require(worth(msg.sender) > worth(attackedUser), "User has higher worth");
+      require(
+        worth(msg.sender) > (worth(attackedUser) * WORTH_PERCENTAGE_TO_PERFORM_SWAP) / 100,
+        "User has higher worth"
+      );
 
     // swap users and, eventually, slash attacked user
     (
