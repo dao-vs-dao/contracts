@@ -21,6 +21,16 @@ contract DaoVsDao is
 
   /* ========== EVENTS ========== */
 
+  event Slashed(
+    address indexed attacker,
+    address indexed attacked,
+    uint256 subtractedFromAttackedBalance,
+    uint256 subtractedFromAttackedSponsorships,
+    uint256 slashingTaxes,
+    uint256 addedToAttackerBalance,
+    uint256 addedToAttackerSponsorships
+  );
+
   /* ========== CONSTRUCTOR & INITIALIZER ========== */
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -53,7 +63,7 @@ contract DaoVsDao is
    * @param _sender The address of the player to retrieve the neighbors of.
    */
   function getNeighboringAddresses(address _sender) external view returns (address[] memory) {
-    require(players[_sender], "Not a player");
+    require(latestClaim[_sender] > 0, "Not a player");
     Coordinates memory coords = userCoord[_sender];
 
     address[] memory neighbors = new address[](6);
@@ -108,9 +118,28 @@ contract DaoVsDao is
     return sponsorships[_user];
   }
 
+  /**
+   * Calculate the amount the user can claim at this time.
+   * @param _user The address of the player to check.
+   */
+  function claimable(address _user) public view returns (uint256) {
+    require(latestClaim[_user] > 0, "User isn't a player");
+
+    Coordinates memory _coords = userCoord[_user];
+    uint256 realmRows = lands[_coords.realm].length;
+
+    // the reward rate is 2^(# rows below the user)
+    uint256 rewardRate = 2**(realmRows - _coords.row) * 10e18;
+    uint256 duration = block.timestamp - latestClaim[_user];
+
+    return (rewardRate * duration) / 365 days;
+  }
+
   /* ========== SETTERS ========== */
 
-  /** Add a new 1x1 realm to the lands matrix. */
+  /**
+   * Add a new 1x1 realm to the lands matrix.
+   */
   function addRealm() external onlyOwner {
     address[] memory row = new address[](1);
     address[][] memory realm = new address[][](1);
@@ -126,14 +155,14 @@ contract DaoVsDao is
    * Place a user into a coordinate decided by the game master
    */
   function placeUser(Coordinates calldata _coord, bool _addRow) external {
-    require(!players[msg.sender], "Already a player");
+    require(latestClaim[msg.sender] == 0, "User is already a player");
 
     address[][] memory _chosenRealm = lands[_coord.realm];
     require(_chosenRealm[_coord.row][_coord.column] == address(0), "Land not empty");
 
     _chosenRealm[_coord.row][_coord.column] = msg.sender;
     userCoord[msg.sender] = _coord;
-    players[msg.sender] = true;
+    latestClaim[msg.sender] = block.timestamp;
 
     if (!_addRow) return;
     uint256 latestRowLength = _chosenRealm[_chosenRealm.length - 1].length;
@@ -156,13 +185,15 @@ contract DaoVsDao is
     require(_coords.column < lands[_coords.realm][_coords.row].length, "Column out of bound");
 
     // check that caller is a neighbor
-    require(players[msg.sender], "User isn't a player");
+    require(latestClaim[msg.sender] > 0, "User isn't a player");
     Coordinates memory _coordsSender = userCoord[msg.sender];
     require(isNeighbor(_coords, _coordsSender), "Swap too far from user coords");
     require(_coords.row >= _coordsSender.row, "Cannot swap with a lower row");
 
     // check the attacked user's worth
     address attackedUser = lands[_coords.realm][_coords.row][_coords.column];
+    _claimTokens(msg.sender);
+    _claimTokens(attackedUser);
     if (attackedUser != address(0))
       require(
         worth(msg.sender) > (worth(attackedUser) * WORTH_PERCENTAGE_TO_PERFORM_SWAP) / 100,
@@ -189,7 +220,7 @@ contract DaoVsDao is
    */
   function sponsor(address _user, uint256 _amount) external {
     require(_amount > 0, "Amount must be greater than 0");
-    require(players[_user], "User isn't a player");
+    require(latestClaim[_user] > 0, "User isn't a player");
     require(balanceOf(msg.sender) >= _amount, "Insufficient balance to sponsor");
 
     // calculate the amount of shares for this sponsorship
@@ -245,6 +276,13 @@ contract DaoVsDao is
     return _dueAmount;
   }
 
+  /**
+   * Claim the token owned by the player.
+   */
+  function claimTokens() external {
+    _claimTokens(msg.sender);
+  }
+
   /* ========== PRIVATE FUNCTIONS ========== */
 
   /**
@@ -254,5 +292,50 @@ contract DaoVsDao is
    * @param _attacked The user to slash.
    * @param _attacker The user that will receive the funds.
    */
-  function slash(address _attacked, address _attacker) private {}
+  function slash(address _attacked, address _attacker) private {
+    uint256 slashedBalance = (_balances[_attacked] * slashingPercentage) / 100;
+    uint256 slashedSponsorships = (sponsorships[_attacked] * slashingPercentage) / 100;
+    uint256 totalSlashed = slashedBalance + slashedSponsorships;
+    uint256 slashingTaxAmount = (totalSlashed * slashingTax) / 100;
+    uint256 totalSlashedWithoutTaxes = totalSlashed - slashingTaxAmount;
+
+    // transfer whole value to owner
+    address _owner = owner();
+    unchecked {
+      _balances[_attacked] -= slashedBalance;
+      sponsorships[_attacked] -= slashedSponsorships;
+      _balances[_owner] += totalSlashed;
+    }
+
+    // calculate how much of the slashed amount should go to their balance
+    // and how much to their sponsors
+    uint256 receiverBalanceRatio = (sponsorships[_attacker] * 100) / _balances[_attacker];
+    uint256 addedToBalance = (totalSlashedWithoutTaxes * receiverBalanceRatio) / 100;
+    uint256 addedToSponsorships = (slashedSponsorships * (100 - receiverBalanceRatio)) / 100;
+    unchecked {
+      _balances[_owner] -= totalSlashedWithoutTaxes;
+      _balances[_attacker] += addedToBalance;
+      sponsorships[_attacker] += addedToSponsorships;
+    }
+
+    // emit event
+    emit Slashed(
+      _attacker,
+      _attacked,
+      slashedBalance,
+      slashedSponsorships,
+      slashingTaxAmount,
+      addedToBalance,
+      addedToSponsorships
+    );
+  }
+
+  /**
+   * Claim the token owned by the specified user.
+   */
+  function _claimTokens(address _user) private {
+    uint256 _amount = claimable(_user);
+    latestClaim[_user] = block.timestamp;
+    _mint(_user, _amount);
+  }
 }

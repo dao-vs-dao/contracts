@@ -12,10 +12,14 @@ abstract contract DaoVsDaoStorageV1 {
 
   /** A matrix containing the game map */
   address[][][] public lands;
-  /** A mapping used to check whether a user is a player or not */
-  mapping(address => bool) public players;
   /** The user coordinates */
   mapping(address => Coordinates) public userCoord;
+
+  /* ========== REWARDS ========== */
+
+  /** The timestamp the user last claimed their tokens.
+  This variable is also used to define whether an address belongs to a player or not */
+  mapping(address => uint256) public latestClaim;
 
   /* ========== SLASHING ========== */
 
