@@ -14,7 +14,7 @@ const NODE_PROVIDER_MATIC_RPC_URL = process.env.NODE_PROVIDER_MATIC_RPC_URL;
 const NODE_PROVIDER_MUMBAI_RPC_URL = process.env.NODE_PROVIDER_MUMBAI_RPC_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 
-const config: HardhatUserConfig = {
+const config: HardhatUserConfig & { etherscan: any } = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {

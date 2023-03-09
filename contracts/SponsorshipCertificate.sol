@@ -25,6 +25,23 @@ contract SponsorshipCertificate is
 
   /* ========== EVENTS ========== */
 
+  event SponsorshipManagerUpdated(address newManager);
+  event SponsorshipMetadataFactoryUpdated(address newFactory);
+  event CertificateEmitted(
+    address indexed sponsor,
+    address indexed sponsorshipReceiver,
+    uint256 amount,
+    uint256 shares,
+    uint256 certificateId
+  );
+  event CertificateRedeemed(
+    address indexed redeemer,
+    address indexed sponsorshipReceiver,
+    uint256 initialAmount,
+    uint256 redeemedAmount,
+    uint256 certificateId
+  );
+
   /* ========== CONSTRUCTOR & INITIALIZER ========== */
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -35,7 +52,7 @@ contract SponsorshipCertificate is
   function initialize() external virtual initializer {
     __Context_init_unchained();
     __Ownable_init_unchained();
-    __ERC721_init_unchained("DVD - Sponsorship Certificate", "DVD-SPCERT");
+    __ERC721_init_unchained("DVD - Sponsorship Certificate", "DVD-SC");
   }
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
@@ -63,6 +80,20 @@ contract SponsorshipCertificate is
 
   /* ========== SETTERS ========== */
 
+  /** Set the sponsorship certificate manager */
+  function setSponsorshipCertificateManager(address _sponsorshipManager) external onlyOwner {
+    require(_sponsorshipManager != address(0), "Invalid manager");
+    sponsorshipManager = _sponsorshipManager;
+    emit SponsorshipManagerUpdated(_sponsorshipManager);
+  }
+
+  /** Set the sponsorship certificate metadata factory */
+  function setSponsorshipCertificateMetadataFactory(address _factory) external onlyOwner {
+    require(_factory != address(0), "Invalid factory");
+    sponsorshipCertificateMetadataFactory = _factory;
+    emit SponsorshipMetadataFactoryUpdated(_factory);
+  }
+
   /* ========== MUTATIVE FUNCTIONS ========== */
 
   /**
@@ -79,7 +110,7 @@ contract SponsorshipCertificate is
     uint256 _shares
   ) external override {
     ISponsorshipRedeemer redeemer = ISponsorshipRedeemer(sponsorshipManager);
-    require(msg.sender == address(redeemer));
+    require(msg.sender == address(redeemer), "Only manager can emit certs");
 
     // mint the certificate
     _tokenIds.increment();
@@ -88,8 +119,14 @@ contract SponsorshipCertificate is
 
     // store the certificate data
     certificateData[certificateId] = CertificateData(_receiver, _amount, 0, _shares, false);
+
+    emit CertificateEmitted(_sponsor, _receiver, _amount, _shares, certificateId);
   }
 
+  /**
+   * Redeem a sponsorship certificate, obtaining back the funds and the profit/loss.
+   * @param certificateId The id of the certificate that should be redeemed.
+   */
   function redeemCertificate(uint256 certificateId) external {
     require(ownerOf(certificateId) == msg.sender, "Not the owner");
 
@@ -104,8 +141,8 @@ contract SponsorshipCertificate is
     // update the certificate
     certificateData[certificateId].redeemed = redeemedAmount;
     certificateData[certificateId].closed = true;
-    emit MetadataUpdate(certificateId);
-  }
 
-  /* ========== PRIVATE FUNCTIONS ========== */
+    emit MetadataUpdate(certificateId);
+    emit CertificateRedeemed(msg.sender, data.receiver, data.amount, redeemedAmount, certificateId);
+  }
 }

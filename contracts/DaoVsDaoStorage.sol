@@ -14,6 +14,8 @@ abstract contract DaoVsDaoStorageV1 {
   address[][][] public lands;
   /** The user coordinates */
   mapping(address => Coordinates) public userCoord;
+  /** The number of players on the board */
+  uint256 public nrPlayers;
 
   /* ========== REWARDS ========== */
 

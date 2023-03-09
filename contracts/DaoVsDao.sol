@@ -10,6 +10,19 @@ import "./interfaces/ISponsorshipCertificate.sol";
 import "./helpers/EditedERC20Upgradeable.sol";
 import "./DaoVsDaoStorage.sol";
 
+struct PlayerData {
+  address userAddress;
+  Coordinates coords;
+  uint256 balance;
+  uint256 sponsorships;
+  uint256 claimable;
+}
+
+struct GameData {
+  address[][][] lands;
+  PlayerData[] players;
+}
+
 contract DaoVsDao is
   ISponsorshipRedeemer,
   OwnableUpgradeable,
@@ -21,6 +34,9 @@ contract DaoVsDao is
 
   /* ========== EVENTS ========== */
 
+  event SponsorshipCertificateEmitterUpdated(address newEmitter);
+  event SlashingPercentageUpdated(uint256 newSlashingPercentage);
+  event SlashingTaxUpdated(uint256 newSlashingTax);
   event Slashed(
     address indexed attacker,
     address indexed attacked,
@@ -42,6 +58,12 @@ contract DaoVsDao is
     __Context_init_unchained();
     __Ownable_init_unchained();
     __ERC20_init_unchained("DaoVsDao Token", "DVD");
+
+    slashingPercentage = 20;
+    slashingTax = 10;
+
+    // give 1 DVD to the contract owner for testing purposes
+    _mint(owner(), 1e18);
   }
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
@@ -129,24 +151,83 @@ contract DaoVsDao is
     uint256 realmRows = lands[_coords.realm].length;
 
     // the reward rate is 2^(# rows below the user)
-    uint256 rewardRate = 2**(realmRows - _coords.row) * 10e18;
+    uint256 rewardRate = 2 ** (realmRows - _coords.row) * 1e18;
     uint256 duration = block.timestamp - latestClaim[_user];
 
     return (rewardRate * duration) / 365 days;
   }
 
-  /* ========== SETTERS ========== */
+  /**
+   * Get some information about the game state.
+   * @dev Computationally intensive, it should only be called by a dapp/test and not on-chain.
+   */
+  function getGameData() external view returns (GameData memory) {
+    PlayerData[] memory players = new PlayerData[](nrPlayers);
+
+    uint256 index = 0;
+    uint256 nrRealms = lands.length;
+    for (uint256 i; i < nrRealms; ++i) {
+      uint256 rows = lands[i].length;
+      for (uint256 r; r < rows; ++r) {
+        uint256 columns = lands[i][r].length;
+        for (uint256 c; c < columns; ++c) {
+          if (lands[i][r][c] != address(0)) players[index++] = getPlayerData(lands[i][r][c]);
+        }
+      }
+    }
+
+    return GameData(lands, players);
+  }
 
   /**
-   * Add a new 1x1 realm to the lands matrix.
+   * Retrieve info about a player.
+   * @dev Computationally intensive, it should only be called by a dapp/test and not on-chain.
    */
-  function addRealm() external onlyOwner {
-    address[] memory row = new address[](1);
-    address[][] memory realm = new address[][](1);
+  function getPlayerData(address _player) public view returns (PlayerData memory) {
+    require(latestClaim[_player] > 0, "User isn't a player");
+    return
+      PlayerData(
+        _player,
+        userCoord[_player],
+        _balances[_player],
+        sponsorships[_player],
+        claimable(_player)
+      );
+  }
 
-    uint256 realmIndex = lands.length;
-    lands.push(realm);
-    lands[realmIndex].push(row);
+  /* ========== SETTERS ========== */
+
+  /** Set the sponsorship certificate emitter */
+  function setSponsorshipCertificateEmitter(address _emitter) external onlyOwner {
+    require(_emitter != address(0), "Invalid emitter");
+    sponsorshipCertificateEmitter = _emitter;
+    emit SponsorshipCertificateEmitterUpdated(_emitter);
+  }
+
+  /** Set the percentage that will be passed from attacked to attacker (minus tax) */
+  function setSlashingPercentage(uint256 _slashingPercentage) external onlyOwner {
+    require(_slashingPercentage <= 100, "Invalid slashing % value");
+    slashingPercentage = _slashingPercentage;
+    emit SlashingPercentageUpdated(_slashingPercentage);
+  }
+
+  /** Set the percentage kept as tax on slashed amounts */
+  function setSlashingTax(uint256 _slashingTax) external onlyOwner {
+    require(_slashingTax <= 100, "Invalid slashing tax value");
+    slashingTax = _slashingTax;
+    emit SlashingTaxUpdated(_slashingTax);
+  }
+
+  /** Add a new 1x1 realm to the lands matrix */
+  function addRealm() external onlyOwner {
+    lands.push([[0x0000000000000000000000000000000000000000]]);
+  }
+
+  /** Add a new row to the specified realm. The row length will be equal to the previous + 1 */
+  function addRow(uint256 _realm) external onlyOwner {
+    address[][] memory _chosenRealm = lands[_realm];
+    uint256 latestRowLength = _chosenRealm[_chosenRealm.length - 1].length;
+    lands[_realm].push(new address[](latestRowLength + 1));
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -160,14 +241,15 @@ contract DaoVsDao is
     address[][] memory _chosenRealm = lands[_coord.realm];
     require(_chosenRealm[_coord.row][_coord.column] == address(0), "Land not empty");
 
-    _chosenRealm[_coord.row][_coord.column] = msg.sender;
+    lands[_coord.realm][_coord.row][_coord.column] = msg.sender;
     userCoord[msg.sender] = _coord;
     latestClaim[msg.sender] = block.timestamp;
+    ++nrPlayers;
 
+    // add an extra row, if requested
     if (!_addRow) return;
     uint256 latestRowLength = _chosenRealm[_chosenRealm.length - 1].length;
-    address[] memory row = new address[](latestRowLength + 1);
-    lands[_coord.realm].push(row);
+    lands[_coord.realm].push(new address[](latestRowLength + 1));
   }
 
   /**
@@ -179,33 +261,34 @@ contract DaoVsDao is
   function swap(Coordinates calldata _coords) external {
     // check coordinates validity
     require(_coords.realm < lands.length, "Realm out of bound");
-    require(_coords.row >= 0, "Row out of bound");
     require(_coords.row < lands[_coords.realm].length, "Row out of bound");
-    require(_coords.column >= 0, "Column out of bound");
     require(_coords.column < lands[_coords.realm][_coords.row].length, "Column out of bound");
 
     // check that caller is a neighbor
     require(latestClaim[msg.sender] > 0, "User isn't a player");
     Coordinates memory _coordsSender = userCoord[msg.sender];
     require(isNeighbor(_coords, _coordsSender), "Swap too far from user coords");
-    require(_coords.row >= _coordsSender.row, "Cannot swap with a lower row");
+    require(_coords.row <= _coordsSender.row, "Cannot swap with a higher row");
 
     // check the attacked user's worth
     address attackedUser = lands[_coords.realm][_coords.row][_coords.column];
     _claimTokens(msg.sender);
-    _claimTokens(attackedUser);
-    if (attackedUser != address(0))
+    if (attackedUser != address(0)) {
+      _claimTokens(attackedUser);
       require(
         worth(msg.sender) > (worth(attackedUser) * WORTH_PERCENTAGE_TO_PERFORM_SWAP) / 100,
         "User has higher worth"
       );
+    }
 
-    // swap users and, eventually, slash attacked user
+    // swap users positions
     (
       lands[_coords.realm][_coords.row][_coords.column],
       lands[_coordsSender.realm][_coordsSender.row][_coordsSender.column]
     ) = (msg.sender, attackedUser);
     userCoord[msg.sender] = _coords;
+
+    // slash attacked user
     if (attackedUser != address(0)) {
       userCoord[attackedUser] = _coordsSender;
       slash(attackedUser, msg.sender);
@@ -260,6 +343,7 @@ contract DaoVsDao is
   ) external override returns (uint256) {
     require(msg.sender == sponsorshipCertificateEmitter, "Only emitter can revoke sponsor");
     require(_shares > 0, "Cannot reimburse 0 shares");
+    require(_shares <= sponsorshipShares[_receiver], "Redeeming more than allowed");
 
     // calculate the due amount
     uint256 _dueAmount = (sponsorships[_receiver] * _shares) / sponsorshipShares[_receiver];
@@ -309,9 +393,11 @@ contract DaoVsDao is
 
     // calculate how much of the slashed amount should go to their balance
     // and how much to their sponsors
-    uint256 receiverBalanceRatio = (sponsorships[_attacker] * 100) / _balances[_attacker];
+    uint256 attackerBalance = _balances[_attacker];
+    uint256 receiverBalanceRatio = (attackerBalance * 100) /
+      (attackerBalance + sponsorships[_attacker]);
     uint256 addedToBalance = (totalSlashedWithoutTaxes * receiverBalanceRatio) / 100;
-    uint256 addedToSponsorships = (slashedSponsorships * (100 - receiverBalanceRatio)) / 100;
+    uint256 addedToSponsorships = (totalSlashedWithoutTaxes * (100 - receiverBalanceRatio)) / 100;
     unchecked {
       _balances[_owner] -= totalSlashedWithoutTaxes;
       _balances[_attacker] += addedToBalance;
