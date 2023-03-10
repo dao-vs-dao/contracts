@@ -68,8 +68,6 @@ contract DaoVsDao is
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
-  /* ========== MODIFIERS ========== */
-
   /* ========== VIEWS ========== */
 
   /** Retrieve the last row of a realm */

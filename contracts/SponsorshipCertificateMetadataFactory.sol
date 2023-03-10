@@ -1,12 +1,34 @@
 //SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.4;
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "base64-sol/base64.sol";
 
 import "./CertificateData.sol";
 import "./interfaces/ISponsorshipCertificateMetadataFactory.sol";
 
-contract SponsorshipCertificateMetadataFactory is ISponsorshipCertificateMetadataFactory {
+contract SponsorshipCertificateMetadataFactory is
+  OwnableUpgradeable,
+  UUPSUpgradeable,
+  ISponsorshipCertificateMetadataFactory
+{
+  /* ========== CONSTRUCTOR & INITIALIZER ========== */
+
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize() external virtual initializer {
+    __Context_init_unchained();
+    __Ownable_init_unchained();
+  }
+
+  function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
+
+  /* ========== PURE FUNCTIONS ========== */
+
   /**
    * Creates the metadata for the specified certificate.
    */
@@ -41,28 +63,26 @@ contract SponsorshipCertificateMetadataFactory is ISponsorshipCertificateMetadat
       );
   }
 
+  /* ========== PRIVATE FUNCTIONS ========== */
+
   function generateName(uint256 _certificateId, bool closed) private pure returns (string memory) {
     string memory baseName = "DVD Sponsorship Certificate #";
     string memory redeemed = closed ? " - REEDEMED" : "";
     return string(abi.encodePacked(baseName, _certificateId, redeemed));
   }
 
-  function generateDescription(CertificateData calldata _data)
-    private
-    pure
-    returns (string memory)
-  {
+  function generateDescription(
+    CertificateData calldata _data
+  ) private pure returns (string memory) {
     return
       _data.closed
         ? generateClosedCertificateDescription(_data)
         : generateOpenCertificateDescription(_data);
   }
 
-  function generateOpenCertificateDescription(CertificateData calldata _data)
-    private
-    pure
-    returns (string memory)
-  {
+  function generateOpenCertificateDescription(
+    CertificateData calldata _data
+  ) private pure returns (string memory) {
     return
       string(
         abi.encodePacked(
@@ -74,11 +94,9 @@ contract SponsorshipCertificateMetadataFactory is ISponsorshipCertificateMetadat
       );
   }
 
-  function generateClosedCertificateDescription(CertificateData calldata _data)
-    private
-    pure
-    returns (string memory)
-  {
+  function generateClosedCertificateDescription(
+    CertificateData calldata _data
+  ) private pure returns (string memory) {
     string memory profitLossText = _data.amount < _data.redeemed ? "profit" : "loss";
     uint256 profitLossValue = _data.amount < _data.redeemed
       ? _data.redeemed - _data.amount
