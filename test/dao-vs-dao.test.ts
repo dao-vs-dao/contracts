@@ -141,26 +141,61 @@ describe("DaoVsDao", function () {
     it("will add the user in the expected location", async () => {
       await daoVsDao.addRealm();
 
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, false);
-      expect(await daoVsDao.nrPlayers()).to.equal(1);
-
-      const gameData = await daoVsDao.getGameData();
-      expect(gameData.lands).to.deep.equal([[[user1.address]]]);
-    });
-
-    it("will add the a new line alongside the user in the expected location", async () => {
-      const coords = { realm: 0, row: 0, column: 0 };
-      await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser(coords, true);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
       expect(await daoVsDao.nrPlayers()).to.equal(1);
 
       const gameData = await daoVsDao.getGameData();
       expect(gameData.lands).to.deep.equal([[[user1.address], [zeroAddress, zeroAddress]]]);
     });
 
+    it("will automatically add a row if the pyramid is full", async () => {
+      const allSigners = await ethers.getSigners();
+      await daoVsDao.addRealm();
+
+      // fist user is added, pyramid is full, new row is added
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      expect((await daoVsDao.getGameData()).lands).to.deep.equal([
+        [[user1.address], [zeroAddress, zeroAddress]]
+      ]);
+
+      // second user is added, pyramid is NOT full, new row is NOT added
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      expect((await daoVsDao.getGameData()).lands).to.deep.equal([
+        [[user1.address], [user2.address, zeroAddress]]
+      ]);
+
+      // third user is added, pyramid is full, new row is added
+      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      expect((await daoVsDao.getGameData()).lands).to.deep.equal([
+        [[user1.address], [user2.address, user3.address], [zeroAddress, zeroAddress, zeroAddress]]
+      ]);
+
+      // forth and fifth users are added, pyramid is NOT full, new row is NOT added
+      await daoVsDao.connect(allSigners[4]).placeUser({ realm: 0, row: 2, column: 0 });
+      await daoVsDao.connect(allSigners[5]).placeUser({ realm: 0, row: 2, column: 2 });
+      expect((await daoVsDao.getGameData()).lands).to.deep.equal([
+        [
+          [user1.address],
+          [user2.address, user3.address],
+          [allSigners[4].address, zeroAddress, allSigners[5].address]
+        ]
+      ]);
+
+      // sixth user is added, pyramid is full, new row is added
+      await daoVsDao.connect(allSigners[6]).placeUser({ realm: 0, row: 2, column: 1 });
+      expect((await daoVsDao.getGameData()).lands).to.deep.equal([
+        [
+          [user1.address],
+          [user2.address, user3.address],
+          [allSigners[4].address, allSigners[6].address, allSigners[5].address],
+          [zeroAddress, zeroAddress, zeroAddress, zeroAddress]
+        ]
+      ]);
+    });
+
     it("updates the user's variables after the addition", async () => {
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
 
       const gameData = await daoVsDao.getGameData();
       console.log(gameData.players[0]);
@@ -179,17 +214,17 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
     });
 
     itParam(
       "will throw an error if trying to swap with out of bound coordinates: ${JSON.stringify(value)}",
       [
-        { realm: 2, row: 0, column: 0, error: "Realm out of bound" },
-        { realm: 0, row: 2, column: 0, error: "Row out of bound" },
-        { realm: 0, row: 0, column: 2, error: "Column out of bound" }
+        { realm: 3, row: 0, column: 0, error: "Realm out of bound" },
+        { realm: 0, row: 3, column: 0, error: "Row out of bound" },
+        { realm: 0, row: 0, column: 3, error: "Column out of bound" }
       ],
       async ({ realm, row, column, error }) => {
         const coord = { realm, row, column };
@@ -207,7 +242,7 @@ describe("DaoVsDao", function () {
     it("will throw if user is too far", async () => {
       // let's add an extra row and a player on it
       await daoVsDao.addRow(0);
-      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2, column: 0 }, false);
+      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2, column: 0 });
 
       const user1Coordinates = { realm: 0, row: 0, column: 0 };
       await expect(daoVsDao.connect(mrNobody).swap(user1Coordinates)).to.be.revertedWith(
@@ -234,8 +269,7 @@ describe("DaoVsDao", function () {
 
     it("will allow users to swap to empty lands", async () => {
       // let's add an extra row and a player on it
-      await daoVsDao.addRow(0);
-      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2, column: 0 }, false);
+      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2, column: 0 });
 
       // initial check
       let lastRow = await daoVsDao.getLastRow(0);
@@ -258,7 +292,9 @@ describe("DaoVsDao", function () {
 
       // verify positions have been swapped
       const gameData = await daoVsDao.getGameData();
-      expect(gameData.lands).to.deep.equal([[[user2.address], [user1.address, user3.address]]]);
+      expect(gameData.lands).to.deep.equal([
+        [[user2.address], [user1.address, user3.address], [zeroAddress, zeroAddress, zeroAddress]]
+      ]);
     });
 
     it("will slash the attacked user on swap", async () => {
@@ -272,18 +308,18 @@ describe("DaoVsDao", function () {
 
       // all the slashing info is in the emitted event
       const slashing = getEventOfType(receipt, "Slashed");
-      expect(slashing.args.subtractedFromAttackedBalance.toString()).equals("50000152207001522");
+      expect(slashing.args.subtractedFromAttackedBalance.toString()).equals("50000304414003044");
       expect(slashing.args.subtractedFromAttackedSponsorships.toString()).equals("0");
-      expect(slashing.args.slashingTaxes.toString()).equals("5000015220700152");
-      expect(slashing.args.addedToAttackerBalance.toString()).equals("45000136986301370");
+      expect(slashing.args.slashingTaxes.toString()).equals("5000030441400304");
+      expect(slashing.args.addedToAttackerBalance.toString()).equals("45000273972602740");
       expect(slashing.args.addedToAttackerSponsorships.toString()).equals("0");
 
       // verify balances (also to owner to check the tax has been paid)
       const user1Data = await daoVsDao.getPlayerData(user1.address);
       const user2Data = await daoVsDao.getPlayerData(user2.address);
-      expect(user1Data.balance.toString()).to.equal("200000608828006088");
-      expect(user2Data.balance.toString()).to.equal("545000454084221207");
-      expect((await daoVsDao.balanceOf(owner.address)).toString()).to.equal("5000015220700152");
+      expect(user1Data.balance.toString()).to.equal("200001217656012176");
+      expect(user2Data.balance.toString()).to.equal("545000908168442415");
+      expect((await daoVsDao.balanceOf(owner.address)).toString()).to.equal("5000030441400304");
     });
   });
 
@@ -291,9 +327,9 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
     });
 
     it("will throw if the amount is 0", async () => {
@@ -360,9 +396,9 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
 
       // add a sponsorship
       const amount = parseEther("0.2");
@@ -447,9 +483,9 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
 
       // add some funds
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
@@ -469,11 +505,11 @@ describe("DaoVsDao", function () {
 
       // all the slashing info is in the emitted event
       const slashing = getEventOfType(receipt, "Slashed");
-      expect(slashing.args.subtractedFromAttackedBalance.toString()).equals("50000177574835109");
+      expect(slashing.args.subtractedFromAttackedBalance.toString()).equals("50000355149670218");
       expect(slashing.args.subtractedFromAttackedSponsorships.toString()).equals("0");
-      expect(slashing.args.slashingTaxes.toString()).equals("5000017757483510");
-      expect(slashing.args.addedToAttackerBalance.toString()).equals("29700105479452055");
-      expect(slashing.args.addedToAttackerSponsorships.toString()).equals("15300054337899543");
+      expect(slashing.args.slashingTaxes.toString()).equals("5000035514967021");
+      expect(slashing.args.addedToAttackerBalance.toString()).equals("29700210958904110");
+      expect(slashing.args.addedToAttackerSponsorships.toString()).equals("15300108675799086");
 
       // no tokens were lost on the way
       const distributed = slashing.args.slashingTaxes
@@ -485,9 +521,9 @@ describe("DaoVsDao", function () {
       // verify balances (also to owner to check the tax has been paid)
       const user1Data = await daoVsDao.getPlayerData(user1.address);
       const user2Data = await daoVsDao.getPlayerData(user2.address);
-      expect(user1Data.balance.toString()).to.equal("200000710299340436");
-      expect(user2Data.balance.toString()).to.equal("529700485996955860");
-      expect((await daoVsDao.balanceOf(owner.address)).toString()).to.equal("5000017757483510");
+      expect(user1Data.balance.toString()).to.equal("200001420598680872");
+      expect(user2Data.balance.toString()).to.equal("529700971993911720");
+      expect((await daoVsDao.balanceOf(owner.address)).toString()).to.equal("5000035514967021");
     });
   });
 
@@ -544,19 +580,33 @@ describe("DaoVsDao", function () {
       // initialize
       await daoVsDao.addRealm();
 
-      const initialBalance = await user1.getBalance();
+      let initialBalance = await user1.getBalance();
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      let spentAmount = initialBalance.sub(await user1.getBalance());
+      console.log(`User1: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
 
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
+      initialBalance = await user2.getBalance();
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      spentAmount = initialBalance.sub(await user2.getBalance());
+      console.log(`User2: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
 
-      const spentAmount = initialBalance.sub(await user1.getBalance());
-      console.log(`Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      initialBalance = await user3.getBalance();
+      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      spentAmount = initialBalance.sub(await user3.getBalance());
+      console.log(`User3: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+
+      initialBalance = await mrNobody.getBalance();
+      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2
+        , column: 1 });
+      spentAmount = initialBalance.sub(await mrNobody.getBalance());
+      console.log(`User4: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
     });
 
     it("swap with an empty cell", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
 
       const initialBalance = await user2.getBalance();
 
@@ -570,8 +620,8 @@ describe("DaoVsDao", function () {
     it("swap with a non-empty cell", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
       await daoVsDao.transfer(user2.address, parseEther("0.50"));
 
@@ -587,8 +637,8 @@ describe("DaoVsDao", function () {
     it("sponsor", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
       await daoVsDao.transfer(user2.address, parseEther("0.50"));
 
@@ -604,8 +654,8 @@ describe("DaoVsDao", function () {
     it("redeem sponsorship", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 }, true);
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 }, false);
+      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
       await daoVsDao.transfer(user2.address, parseEther("0.50"));
       const amount = parseEther("0.2");

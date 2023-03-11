@@ -231,9 +231,9 @@ contract DaoVsDao is
   /* ========== MUTATIVE FUNCTIONS ========== */
 
   /**
-   * Place a user into a coordinate decided by the game master
+   * Place a user into a set of coordinates they picked
    */
-  function placeUser(Coordinates calldata _coord, bool _addRow) external {
+  function placeUser(Coordinates calldata _coord) external {
     require(latestClaim[msg.sender] == 0, "User is already a player");
 
     address[][] memory _chosenRealm = lands[_coord.realm];
@@ -244,8 +244,12 @@ contract DaoVsDao is
     latestClaim[msg.sender] = block.timestamp;
     ++nrPlayers;
 
-    // add an extra row, if requested
-    if (!_addRow) return;
+    // check if adding a new row is required
+    uint256 nrRows = _chosenRealm.length;
+    uint256 totalCells = (nrRows * (nrRows + 1)) / 2;
+    if (totalCells > nrPlayers) return; // there is still space, no need to add anything.
+
+    // add new row
     uint256 latestRowLength = _chosenRealm[_chosenRealm.length - 1].length;
     lands[_coord.realm].push(new address[](latestRowLength + 1));
   }
