@@ -49,78 +49,6 @@ describe("DaoVsDao", function () {
       expect(await daoVsDao.balanceOf(owner.address)).to.equal(parseEther("1"));
     });
 
-    it("can update the certificate emitter", async () => {
-      const emitter = "0x388C818CA8B9251b393131C08a736A67ccB19297";
-      await daoVsDao.setSponsorshipCertificateEmitter(emitter);
-      expect(await daoVsDao.sponsorshipCertificateEmitter()).to.equal(emitter);
-    });
-
-    it("setting the certificate emitter to address(0) throw an error", async () => {
-      await expect(daoVsDao.setSponsorshipCertificateEmitter(zeroAddress)).to.be.revertedWith(
-        "Invalid emitter"
-      );
-    });
-
-    it("random user setting the certificate emitter will throw an error", async () => {
-      await expect(
-        daoVsDao.connect(user1).setSponsorshipCertificateEmitter(zeroAddress)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("updating the certificate emitter triggers an event", async () => {
-      const emitter = "0x388C818CA8B9251b393131C08a736A67ccB19297";
-      const tx = await daoVsDao.setSponsorshipCertificateEmitter(emitter);
-      const receipt = await tx.wait();
-
-      expect(countEventsOfType(receipt, "SponsorshipCertificateEmitterUpdated")).to.equal(1);
-    });
-
-    it("can update the slashing percentage", async () => {
-      await daoVsDao.setSlashingPercentage(99);
-      expect(await daoVsDao.slashingPercentage()).to.equal(99);
-    });
-
-    it("setting the slashing percentage to an invalid value throw an error", async () => {
-      await expect(daoVsDao.setSlashingPercentage(150)).to.be.revertedWith(
-        "Invalid slashing % value"
-      );
-    });
-
-    it("random user setting the slashing percentage will throw an error", async () => {
-      await expect(daoVsDao.connect(user1).setSlashingPercentage(99)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("updating the slashing percentage triggers an event", async () => {
-      const tx = await daoVsDao.setSlashingPercentage(99);
-      const receipt = await tx.wait();
-
-      expect(countEventsOfType(receipt, "SlashingPercentageUpdated")).to.equal(1);
-    });
-
-    it("can update the slashing tax", async () => {
-      await daoVsDao.setSlashingTax(99);
-      expect(await daoVsDao.slashingTax()).to.equal(99);
-    });
-
-    it("setting the slashing tax to an invalid value throw an error", async () => {
-      await expect(daoVsDao.setSlashingTax(150)).to.be.revertedWith("Invalid slashing tax value");
-    });
-
-    it("random user setting the slashing tax will throw an error", async () => {
-      await expect(daoVsDao.connect(user1).setSlashingTax(99)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
-    });
-
-    it("updating the slashing tax triggers an event", async () => {
-      const tx = await daoVsDao.setSlashingTax(99);
-      const receipt = await tx.wait();
-
-      expect(countEventsOfType(receipt, "SlashingTaxUpdated")).to.equal(1);
-    });
-
     it("is possible to add new realms", async () => {
       await daoVsDao.addRealm();
       await daoVsDao.addRealm();
@@ -137,11 +65,139 @@ describe("DaoVsDao", function () {
     });
   });
 
+  describe("Setters", function () {
+    describe("setSponsorshipCertificateEmitter", function () {
+      it("can set the certificate emitter", async () => {
+        const emitter = "0x388C818CA8B9251b393131C08a736A67ccB19297";
+        await daoVsDao.setSponsorshipCertificateEmitter(emitter);
+        expect(await daoVsDao.sponsorshipCertificateEmitter()).to.equal(emitter);
+      });
+
+      it("setting the certificate emitter to address(0) throw an error", async () => {
+        await expect(daoVsDao.setSponsorshipCertificateEmitter(zeroAddress)).to.be.revertedWith(
+          "Invalid emitter"
+        );
+      });
+
+      it("random user setting the certificate emitter will throw an error", async () => {
+        await expect(
+          daoVsDao.connect(user1).setSponsorshipCertificateEmitter(zeroAddress)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("updating the certificate emitter triggers an event", async () => {
+        const emitter = "0x388C818CA8B9251b393131C08a736A67ccB19297";
+        const tx = await daoVsDao.setSponsorshipCertificateEmitter(emitter);
+        const receipt = await tx.wait();
+
+        expect(countEventsOfType(receipt, "SponsorshipCertificateEmitterUpdated")).to.equal(1);
+      });
+    });
+
+    describe("setSlashingPercentage", function () {
+      it("can update the slashing percentage", async () => {
+        await daoVsDao.setSlashingPercentage(99);
+        expect(await daoVsDao.slashingPercentage()).to.equal(99);
+      });
+
+      it("setting the slashing percentage to an invalid value throw an error", async () => {
+        await expect(daoVsDao.setSlashingPercentage(150)).to.be.revertedWith(
+          "Invalid slashing % value"
+        );
+      });
+
+      it("random user setting the slashing percentage will throw an error", async () => {
+        await expect(daoVsDao.connect(user1).setSlashingPercentage(99)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("updating the slashing percentage triggers an event", async () => {
+        const tx = await daoVsDao.setSlashingPercentage(99);
+        const receipt = await tx.wait();
+
+        expect(countEventsOfType(receipt, "SlashingPercentageUpdated")).to.equal(1);
+      });
+    });
+
+    describe("setSlashingTax", function () {
+      it("can update the slashing tax", async () => {
+        await daoVsDao.setSlashingTax(99);
+        expect(await daoVsDao.slashingTax()).to.equal(99);
+      });
+
+      it("setting the slashing tax to an invalid value throw an error", async () => {
+        await expect(daoVsDao.setSlashingTax(150)).to.be.revertedWith("Invalid slashing tax value");
+      });
+
+      it("random user setting the slashing tax will throw an error", async () => {
+        await expect(daoVsDao.connect(user1).setSlashingTax(99)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("updating the slashing tax triggers an event", async () => {
+        const tx = await daoVsDao.setSlashingTax(99);
+        const receipt = await tx.wait();
+
+        expect(countEventsOfType(receipt, "SlashingTaxUpdated")).to.equal(1);
+      });
+    });
+
+    describe("setParticipationFee", function () {
+      it("can set the participation fee", async () => {
+        await daoVsDao.setParticipationFee(parseEther("10"));
+        expect(await daoVsDao.participationFee()).to.equal(parseEther("10"));
+      });
+
+      it("random user setting the participation fee will throw an error", async () => {
+        await expect(daoVsDao.connect(user1).setParticipationFee(0)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("updating the participation fee triggers an event", async () => {
+        const tx = await daoVsDao.setParticipationFee(99);
+        const receipt = await tx.wait();
+
+        expect(countEventsOfType(receipt, "ParticipationFeeUpdated")).to.equal(1);
+      });
+    });
+
+    describe("setPercentageForReferrer", function () {
+      it("can update the percentage for referrers", async () => {
+        await daoVsDao.setPercentageForReferrer(99);
+        expect(await daoVsDao.percentageForReferrer()).to.equal(99);
+      });
+
+      it("setting the percentage for referrers to an invalid value throw an error", async () => {
+        await expect(daoVsDao.setPercentageForReferrer(150)).to.be.revertedWith(
+          "Invalid % for referrers value"
+        );
+      });
+
+      it("random user setting the percentage for referrers will throw an error", async () => {
+        await expect(daoVsDao.connect(user1).setPercentageForReferrer(99)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("updating the percentage for referrers triggers an event", async () => {
+        const tx = await daoVsDao.setPercentageForReferrer(99);
+        const receipt = await tx.wait();
+
+        expect(countEventsOfType(receipt, "PercentageForReferrerUpdated")).to.equal(1);
+      });
+    });
+  });
+
   describe("placeUser ", function () {
     it("will add the user in the expected location", async () => {
       await daoVsDao.addRealm();
 
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       expect(await daoVsDao.nrPlayers()).to.equal(1);
 
       const gameData = await daoVsDao.getGameData();
@@ -153,26 +209,36 @@ describe("DaoVsDao", function () {
       await daoVsDao.addRealm();
 
       // fist user is added, pyramid is full, new row is added
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       expect((await daoVsDao.getGameData()).lands).to.deep.equal([
         [[user1.address], [zeroAddress, zeroAddress]]
       ]);
 
       // second user is added, pyramid is NOT full, new row is NOT added
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       expect((await daoVsDao.getGameData()).lands).to.deep.equal([
         [[user1.address], [user2.address, zeroAddress]]
       ]);
 
       // third user is added, pyramid is full, new row is added
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
       expect((await daoVsDao.getGameData()).lands).to.deep.equal([
         [[user1.address], [user2.address, user3.address], [zeroAddress, zeroAddress, zeroAddress]]
       ]);
 
       // forth and fifth users are added, pyramid is NOT full, new row is NOT added
-      await daoVsDao.connect(allSigners[4]).placeUser({ realm: 0, row: 2, column: 0 });
-      await daoVsDao.connect(allSigners[5]).placeUser({ realm: 0, row: 2, column: 2 });
+      await daoVsDao
+        .connect(allSigners[4])
+        .placeUser({ realm: 0, row: 2, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(allSigners[5])
+        .placeUser({ realm: 0, row: 2, column: 2 }, zeroAddress, { value: parseEther("0.5") });
       expect((await daoVsDao.getGameData()).lands).to.deep.equal([
         [
           [user1.address],
@@ -182,7 +248,9 @@ describe("DaoVsDao", function () {
       ]);
 
       // sixth user is added, pyramid is full, new row is added
-      await daoVsDao.connect(allSigners[6]).placeUser({ realm: 0, row: 2, column: 1 });
+      await daoVsDao
+        .connect(allSigners[6])
+        .placeUser({ realm: 0, row: 2, column: 1 }, zeroAddress, { value: parseEther("0.5") });
       expect((await daoVsDao.getGameData()).lands).to.deep.equal([
         [
           [user1.address],
@@ -195,7 +263,9 @@ describe("DaoVsDao", function () {
 
     it("updates the user's variables after the addition", async () => {
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
 
       const gameData = await daoVsDao.getGameData();
       console.log(gameData.players[0]);
@@ -208,15 +278,68 @@ describe("DaoVsDao", function () {
       expect(gameData.players[0].sponsorships).to.equal(0);
       expect(gameData.players[0].claimable).to.equal(0);
     });
+
+    it("sends all participation fee to `owner` if referrer is not a player", async () => {
+      await daoVsDao.addRealm();
+
+      const initialOwnerBalance = await owner.getBalance();
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      const receivedByOwner = (await owner.getBalance()).sub(initialOwnerBalance);
+
+      expect(receivedByOwner).to.equal(parseEther("0.5"));
+    });
+
+    it("will throw if the user paid less than the participation fee", async () => {
+      await daoVsDao.addRealm();
+      await expect(
+        daoVsDao
+          .connect(user1)
+          .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.1") })
+      ).to.be.revertedWith("Need to pay participation fee");
+    });
+
+    it("will throw if the user is already a player", async () => {
+      await daoVsDao.addRealm();
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+
+      await expect(
+        daoVsDao
+          .connect(user1)
+          .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") })
+      ).to.be.revertedWith("User is already a player");
+    });
+
+    it("will throw if the selected area is not empty", async () => {
+      await daoVsDao.addRealm();
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+
+      await expect(
+        daoVsDao
+          .connect(user2)
+          .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") })
+      ).to.be.revertedWith("Area not empty");
+    });
   });
 
   describe("swap", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
     });
 
     itParam(
@@ -242,7 +365,9 @@ describe("DaoVsDao", function () {
     it("will throw if user is too far", async () => {
       // let's add an extra row and a player on it
       await daoVsDao.addRow(0);
-      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2, column: 0 });
+      await daoVsDao
+        .connect(mrNobody)
+        .placeUser({ realm: 0, row: 2, column: 0 }, zeroAddress, { value: parseEther("0.5") });
 
       const user1Coordinates = { realm: 0, row: 0, column: 0 };
       await expect(daoVsDao.connect(mrNobody).swap(user1Coordinates)).to.be.revertedWith(
@@ -269,7 +394,9 @@ describe("DaoVsDao", function () {
 
     it("will allow users to swap to empty lands", async () => {
       // let's add an extra row and a player on it
-      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2, column: 0 });
+      await daoVsDao
+        .connect(mrNobody)
+        .placeUser({ realm: 0, row: 2, column: 0 }, zeroAddress, { value: parseEther("0.5") });
 
       // initial check
       let lastRow = await daoVsDao.getLastRow(0);
@@ -327,9 +454,15 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
     });
 
     it("will throw if the amount is 0", async () => {
@@ -396,9 +529,15 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
 
       // add a sponsorship
       const amount = parseEther("0.2");
@@ -483,9 +622,15 @@ describe("DaoVsDao", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
 
       // add some funds
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
@@ -529,10 +674,8 @@ describe("DaoVsDao", function () {
 
   describe("Cost control (see console)", function () {
     const avgGasPrice = 150;
-    const WEIToETH = (n: BigNumber) => {
-      const withGasCost = n.toNumber() * avgGasPrice;
-      return withGasCost / Math.pow(10, 18);
-    };
+    const WEIToETH = (n: BigNumber) =>
+      n.mul(avgGasPrice).div(BigNumber.from(10).pow(13)).toNumber() / 100000;
 
     it("adding a row", async () => {
       // initialize
@@ -541,30 +684,18 @@ describe("DaoVsDao", function () {
       let initialBalance = await owner.getBalance();
       await daoVsDao.addRow(0);
       let spentAmount = initialBalance.sub(await owner.getBalance());
-      console.log(`ROW1: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`ROW1: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
 
       initialBalance = await owner.getBalance();
       await daoVsDao.addRow(0);
       spentAmount = initialBalance.sub(await owner.getBalance());
-      console.log(`ROW2: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`ROW2: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
 
       initialBalance = await owner.getBalance();
       await daoVsDao.addRow(0);
       spentAmount = initialBalance.sub(await owner.getBalance());
-      console.log(`ROW3: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`ROW3: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
 
-      await daoVsDao.addRow(0);
-      await daoVsDao.addRow(0);
-      await daoVsDao.addRow(0);
-      await daoVsDao.addRow(0);
-
-      initialBalance = await owner.getBalance();
-      await daoVsDao.addRow(0);
-      spentAmount = initialBalance.sub(await owner.getBalance());
-      console.log(`ROW8: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
-
-      await daoVsDao.addRow(0);
-      await daoVsDao.addRow(0);
       await daoVsDao.addRow(0);
       await daoVsDao.addRow(0);
       await daoVsDao.addRow(0);
@@ -573,7 +704,19 @@ describe("DaoVsDao", function () {
       initialBalance = await owner.getBalance();
       await daoVsDao.addRow(0);
       spentAmount = initialBalance.sub(await owner.getBalance());
-      console.log(`ROW15: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`ROW8: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
+
+      await daoVsDao.addRow(0);
+      await daoVsDao.addRow(0);
+      await daoVsDao.addRow(0);
+      await daoVsDao.addRow(0);
+      await daoVsDao.addRow(0);
+      await daoVsDao.addRow(0);
+
+      initialBalance = await owner.getBalance();
+      await daoVsDao.addRow(0);
+      spentAmount = initialBalance.sub(await owner.getBalance());
+      console.log(`ROW15: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
     });
 
     it("placing a user", async () => {
@@ -581,32 +724,43 @@ describe("DaoVsDao", function () {
       await daoVsDao.addRealm();
 
       let initialBalance = await user1.getBalance();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       let spentAmount = initialBalance.sub(await user1.getBalance());
-      console.log(`User1: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`User1: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
 
       initialBalance = await user2.getBalance();
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       spentAmount = initialBalance.sub(await user2.getBalance());
-      console.log(`User2: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`User2: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
 
       initialBalance = await user3.getBalance();
-      await daoVsDao.connect(user3).placeUser({ realm: 0, row: 1, column: 1 });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
       spentAmount = initialBalance.sub(await user3.getBalance());
-      console.log(`User3: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`User3: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
 
       initialBalance = await mrNobody.getBalance();
-      await daoVsDao.connect(mrNobody).placeUser({ realm: 0, row: 2
-        , column: 1 });
+      await daoVsDao
+        .connect(mrNobody)
+        .placeUser({ realm: 0, row: 2, column: 1 }, zeroAddress, { value: parseEther("0.5") });
       spentAmount = initialBalance.sub(await mrNobody.getBalance());
-      console.log(`User4: Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`User4: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
     });
 
     it("swap with an empty cell", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
 
       const initialBalance = await user2.getBalance();
 
@@ -614,14 +768,20 @@ describe("DaoVsDao", function () {
       await daoVsDao.connect(user2).swap(emptyCoordinates);
 
       const spentAmount = initialBalance.sub(await user2.getBalance());
-      console.log(`Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(
+        `Swapping (empty): Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`
+      );
     });
 
     it("swap with a non-empty cell", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
       await daoVsDao.transfer(user2.address, parseEther("0.50"));
 
@@ -631,14 +791,20 @@ describe("DaoVsDao", function () {
       await daoVsDao.connect(user2).swap(user1Coordinates);
 
       const spentAmount = initialBalance.sub(await user2.getBalance());
-      console.log(`Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(
+        `Swapping (non-empty): Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`
+      );
     });
 
     it("sponsor", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
       await daoVsDao.transfer(user2.address, parseEther("0.50"));
 
@@ -648,14 +814,18 @@ describe("DaoVsDao", function () {
       await daoVsDao.connect(user2).sponsor(user1.address, amount);
 
       const spentAmount = initialBalance.sub(await user2.getBalance());
-      console.log(`Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(`Sponsoring: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`);
     });
 
     it("redeem sponsorship", async () => {
       // initialize
       await daoVsDao.addRealm();
-      await daoVsDao.connect(user1).placeUser({ realm: 0, row: 0, column: 0 });
-      await daoVsDao.connect(user2).placeUser({ realm: 0, row: 1, column: 0 });
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
       await daoVsDao.transfer(user1.address, parseEther("0.25"));
       await daoVsDao.transfer(user2.address, parseEther("0.50"));
       const amount = parseEther("0.2");
@@ -670,7 +840,9 @@ describe("DaoVsDao", function () {
         .redeemSponsorshipShares(user2.address, user1.address, amount);
 
       const spentAmount = initialBalance.sub(await fakeEmitter.getBalance());
-      console.log(`Spent ${WEIToETH(spentAmount)} MATIC (with gas price of ${avgGasPrice})`);
+      console.log(
+        `Redeem sponsorship: Spent ${WEIToETH(spentAmount)} MATIC (gas price: ${avgGasPrice})`
+      );
     });
   });
 });

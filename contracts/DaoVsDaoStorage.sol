@@ -38,4 +38,11 @@ abstract contract DaoVsDaoStorageV1 {
   mapping(address => uint256) public sponsorships;
   /** The amount of shares for a single user's sponsorship */
   mapping(address => uint256) public sponsorshipShares;
+
+  /* ========== PARTICIPATION COSTS ========== */
+
+  /** The minimum amount of chain coins needed to participate to the game */
+  uint256 public participationFee;
+  /** The percentage of the fee that will be forwarded to the player that referred this user */
+  uint256 public percentageForReferrer;
 }

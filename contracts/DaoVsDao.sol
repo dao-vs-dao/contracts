@@ -37,6 +37,8 @@ contract DaoVsDao is
   event SponsorshipCertificateEmitterUpdated(address newEmitter);
   event SlashingPercentageUpdated(uint256 newSlashingPercentage);
   event SlashingTaxUpdated(uint256 newSlashingTax);
+  event ParticipationFeeUpdated(uint256 newParticipationFee);
+  event PercentageForReferrerUpdated(uint256 newPercentageForReferrer);
   event Slashed(
     address indexed attacker,
     address indexed attacked,
@@ -59,8 +61,10 @@ contract DaoVsDao is
     __Ownable_init_unchained();
     __ERC20_init_unchained("DaoVsDao Token", "DVD");
 
-    slashingPercentage = 20;
-    slashingTax = 10;
+    slashingPercentage = 20; // 20% of the user worth will be slashed when they are attacked
+    slashingTax = 10; // 10% of the total amount slashed is kept as tax
+    participationFee = 20e16; // 0.20 MATIC as participation fee
+    percentageForReferrer = 30; // 30% of the fee goes to the referrer
 
     // give 1 DVD to the contract owner for testing purposes
     _mint(owner(), 1e18);
@@ -209,6 +213,19 @@ contract DaoVsDao is
     emit SlashingPercentageUpdated(_slashingPercentage);
   }
 
+  /** Set the participation fee, paid by players to join the game */
+  function setParticipationFee(uint256 _participationFee) external onlyOwner {
+    participationFee = _participationFee;
+    emit ParticipationFeeUpdated(_participationFee);
+  }
+
+  /** Set the percentage of the participation fee that will be received by referrers */
+  function setPercentageForReferrer(uint256 _percentageForReferrer) external onlyOwner {
+    require(_percentageForReferrer <= 100, "Invalid % for referrers value");
+    percentageForReferrer = _percentageForReferrer;
+    emit PercentageForReferrerUpdated(_percentageForReferrer);
+  }
+
   /** Set the percentage kept as tax on slashed amounts */
   function setSlashingTax(uint256 _slashingTax) external onlyOwner {
     require(_slashingTax <= 100, "Invalid slashing tax value");
@@ -233,12 +250,21 @@ contract DaoVsDao is
   /**
    * Place a user into a set of coordinates they picked
    */
-  function placeUser(Coordinates calldata _coord) external {
+  function placeUser(Coordinates calldata _coord, address payable _referrer) external payable {
     require(latestClaim[msg.sender] == 0, "User is already a player");
+    require(msg.value >= participationFee, "Need to pay participation fee");
 
+    // check the chosen area
     address[][] memory _chosenRealm = lands[_coord.realm];
-    require(_chosenRealm[_coord.row][_coord.column] == address(0), "Land not empty");
+    require(_chosenRealm[_coord.row][_coord.column] == address(0), "Area not empty");
 
+    // split the participation fee (only if referrer is a player)
+    uint256 referralPercentage = latestClaim[msg.sender] > 0 ? percentageForReferrer : 0;
+    uint256 ownerPercentage = 100 - referralPercentage;
+    payable(owner()).transfer((msg.value * ownerPercentage) / 100);
+    if (referralPercentage > 0) _referrer.transfer((msg.value * referralPercentage) / 100);
+
+    // place user at the specified coordinates
     lands[_coord.realm][_coord.row][_coord.column] = msg.sender;
     userCoord[msg.sender] = _coord;
     latestClaim[msg.sender] = block.timestamp;

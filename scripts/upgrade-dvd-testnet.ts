@@ -2,6 +2,8 @@ import { upgrades, ethers } from "hardhat";
 import hre from "hardhat";
 
 const MUMBAI_DVD_ADDRESS = "0xAcd88F72B980ed144c7C037F6807E39026CFFd15";
+const sleep = (ms: number)  => new Promise(resolve => setTimeout(resolve, ms));
+
 
 async function main() {
   console.log("Upgrading DaoVsDao version...");
@@ -11,6 +13,9 @@ async function main() {
   const implementation = await upgrades.erc1967.getImplementationAddress(hook.address);
   console.log("DaoVsDao upgrade deployed to:", hook.address);
   console.log("New implementation address:", implementation);
+
+  console.log("Wait a bit for the contract to settle...");
+  await sleep(5000);
 
   console.log("Verifying DaoVsDao");
   try {
