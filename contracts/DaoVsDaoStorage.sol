@@ -45,4 +45,16 @@ abstract contract DaoVsDaoStorageV1 {
   uint256 public participationFee;
   /** The percentage of the fee that will be forwarded to the player that referred this user */
   uint256 public percentageForReferrer;
+
+  /* ========== COOL-DOWNS ========== */
+
+  /** How often players can attack */
+  uint256 public constant attackCoolDownTime = 12 hours;
+  /** A map containing the timestamps signaling when the players will be able to attack again */
+  mapping(address => uint256) public attackCoolDowns;
+
+  /** How long a player won't be able to be attacked after being swapped */
+  uint256 public constant recoveryCoolDownTime = 24 hours;
+  /** A map containing the timestamps signaling when the players will be able to be attacked again */
+  mapping(address => uint256) public recoveryCoolDowns;
 }

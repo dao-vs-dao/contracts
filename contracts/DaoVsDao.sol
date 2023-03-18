@@ -16,6 +16,8 @@ struct PlayerData {
   uint256 balance;
   uint256 sponsorships;
   uint256 claimable;
+  uint256 attackCoolDownEndTimestamp;
+  uint256 recoveryCoolDownEndTimestamp;
 }
 
 struct GameData {
@@ -193,7 +195,9 @@ contract DaoVsDao is
         userCoord[_player],
         _balances[_player],
         sponsorships[_player],
-        claimable(_player)
+        claimable(_player),
+        attackCoolDowns[_player],
+        recoveryCoolDowns[_player]
       );
   }
 
@@ -208,7 +212,7 @@ contract DaoVsDao is
 
   /** Set the percentage that will be passed from attacked to attacker (minus tax) */
   function setSlashingPercentage(uint256 _slashingPercentage) external onlyOwner {
-    require(_slashingPercentage <= 100, "Invalid slashing % value");
+    require(_slashingPercentage <= 50, "Invalid slashing % value");
     slashingPercentage = _slashingPercentage;
     emit SlashingPercentageUpdated(_slashingPercentage);
   }
@@ -298,10 +302,15 @@ contract DaoVsDao is
     require(isNeighbor(_coords, _coordsSender), "Swap too far from user coords");
     require(_coords.row <= _coordsSender.row, "Cannot swap with a higher row");
 
-    // check the attacked user's worth
+    // check attack cool-down
+    uint256 timestamp = block.timestamp;
+    require(attackCoolDowns[msg.sender] <= timestamp, "Cannot attack yet");
+
+    // check the attacked user's worth and recovery cool-down
     address attackedUser = lands[_coords.realm][_coords.row][_coords.column];
     _claimTokens(msg.sender);
     if (attackedUser != address(0)) {
+      require(recoveryCoolDowns[attackedUser] <= timestamp, "Cannot be attacked yet");
       _claimTokens(attackedUser);
       require(
         worth(msg.sender) > (worth(attackedUser) * WORTH_PERCENTAGE_TO_PERFORM_SWAP) / 100,
@@ -315,11 +324,14 @@ contract DaoVsDao is
       lands[_coordsSender.realm][_coordsSender.row][_coordsSender.column]
     ) = (msg.sender, attackedUser);
     userCoord[msg.sender] = _coords;
+    attackCoolDowns[msg.sender] = timestamp + attackCoolDownTime;
+    recoveryCoolDowns[msg.sender] = 0;
 
     // slash attacked user
     if (attackedUser != address(0)) {
       userCoord[attackedUser] = _coordsSender;
       slash(attackedUser, msg.sender);
+      recoveryCoolDowns[attackedUser] = timestamp + recoveryCoolDownTime;
     }
   }
 
@@ -405,8 +417,13 @@ contract DaoVsDao is
    * @param _attacker The user that will receive the funds.
    */
   function slash(address _attacked, address _attacker) private {
-    uint256 slashedBalance = (_balances[_attacked] * slashingPercentage) / 100;
-    uint256 slashedSponsorships = (sponsorships[_attacked] * slashingPercentage) / 100;
+    // if the attacked had recently attacked, the slashing is 2x
+    uint256 slashingPercentageAdjusted = attackCoolDowns[_attacked] > block.timestamp
+      ? slashingPercentage * 2
+      : slashingPercentage;
+
+    uint256 slashedBalance = (_balances[_attacked] * slashingPercentageAdjusted) / 100;
+    uint256 slashedSponsorships = (sponsorships[_attacked] * slashingPercentageAdjusted) / 100;
     uint256 totalSlashed = slashedBalance + slashedSponsorships;
     uint256 slashingTaxAmount = (totalSlashed * slashingTax) / 100;
     uint256 totalSlashedWithoutTaxes = totalSlashed - slashingTaxAmount;

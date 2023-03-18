@@ -392,6 +392,34 @@ describe("DaoVsDao", function () {
       );
     });
 
+    it("will throw if user tries to swap while in attack cool-down", async () => {
+      // let's add an extra row and a player on it
+      await daoVsDao
+        .connect(mrNobody)
+        .placeUser({ realm: 0, row: 2, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+
+      // first swap
+      await daoVsDao.connect(mrNobody).swap({ realm: 0, row: 2, column: 1 });
+
+      // second swap fails as user is in attack cool down
+      await expect(
+        daoVsDao.connect(mrNobody).swap({ realm: 0, row: 2, column: 2 })
+      ).to.be.revertedWith("Cannot attack yet");
+    });
+
+    it("will throw if user tries to swap with other user while in recovery cool-down", async () => {
+      await daoVsDao.transfer(user2.address, parseEther("0.50"));
+      await daoVsDao.transfer(user3.address, parseEther("0.50"));
+
+      // first swap (user2 => user1)
+      await daoVsDao.connect(user2).swap({ realm: 0, row: 0, column: 0 });
+
+      // second swap (user3 => user1) fails as user1 is in recovery cool down
+      await expect(
+        daoVsDao.connect(user3).swap({ realm: 0, row: 1, column: 0 })
+      ).to.be.revertedWith("Cannot be attacked yet");
+    });
+
     it("will allow users to swap to empty lands", async () => {
       // let's add an extra row and a player on it
       await daoVsDao
