@@ -96,8 +96,8 @@ describe("DaoVsDao", function () {
 
     describe("setSlashingPercentage", function () {
       it("can update the slashing percentage", async () => {
-        await daoVsDao.setSlashingPercentage(99);
-        expect(await daoVsDao.slashingPercentage()).to.equal(99);
+        await daoVsDao.setSlashingPercentage(49);
+        expect(await daoVsDao.slashingPercentage()).to.equal(49);
       });
 
       it("setting the slashing percentage to an invalid value throw an error", async () => {
@@ -113,7 +113,7 @@ describe("DaoVsDao", function () {
       });
 
       it("updating the slashing percentage triggers an event", async () => {
-        const tx = await daoVsDao.setSlashingPercentage(99);
+        const tx = await daoVsDao.setSlashingPercentage(49);
         const receipt = await tx.wait();
 
         expect(countEventsOfType(receipt, "SlashingPercentageUpdated")).to.equal(1);
@@ -189,6 +189,38 @@ describe("DaoVsDao", function () {
         expect(countEventsOfType(receipt, "PercentageForReferrerUpdated")).to.equal(1);
       });
     });
+  });
+
+  describe("isNeighbor", function () {
+    itParam(
+      "recognizes neighboring coordinates: ${JSON.stringify(value)}",
+      [
+        // upper row
+        { realm: 0, row: 3, column: 0, expected: false },
+        { realm: 0, row: 3, column: 1, expected: true },
+        { realm: 0, row: 3, column: 2, expected: true },
+        { realm: 0, row: 3, column: 3, expected: false },
+        // same row
+        { realm: 0, row: 4, column: 0, expected: false },
+        { realm: 0, row: 4, column: 1, expected: true },
+        { realm: 0, row: 4, column: 3, expected: true },
+        { realm: 0, row: 4, column: 4, expected: false },
+        // bottom row
+        { realm: 0, row: 5, column: 1, expected: false },
+        { realm: 0, row: 5, column: 2, expected: true },
+        { realm: 0, row: 5, column: 3, expected: true },
+        { realm: 0, row: 5, column: 4, expected: false },
+        // other realm
+        { realm: 1, row: 4, column: 1, expected: false },
+        // itself
+        { realm: 0, row: 4, column: 2, expected: false },
+      ],
+      async ({ realm, row, column, expected }) => {
+        const c1 = { realm: 0, row: 4, column: 2 };
+        const c2 = { realm, row, column };
+        expect(await daoVsDao.isNeighbor(c1, c2)).to.equal(expected);
+      }
+    );
   });
 
   describe("placeUser ", function () {

@@ -124,7 +124,13 @@ contract DaoVsDao is
     if (c1.realm != c2.realm) return false;
     uint64 deltaRow = c1.row > c2.row ? c1.row - c2.row : c2.row - c1.row;
     uint64 deltaColumn = c1.column > c2.column ? c1.column - c2.column : c2.column - c1.column;
-    return (deltaRow <= 1 && deltaColumn <= 1);
+
+    return ((deltaRow == 0 && deltaColumn == 1) || // vertically adjacent
+      (deltaRow == 1 && deltaColumn == 0) || // top right or bottom left
+      (deltaRow == 1 &&
+        deltaColumn == 1 &&
+        ((c1.row > c2.row && c1.column > c2.column) || // top left
+          (c1.row < c2.row && c1.column < c2.column)))); // bottom right
   }
 
   /**
