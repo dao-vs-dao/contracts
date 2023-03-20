@@ -213,7 +213,7 @@ describe("DaoVsDao", function () {
         // other realm
         { realm: 1, row: 4, column: 1, expected: false },
         // itself
-        { realm: 0, row: 4, column: 2, expected: false },
+        { realm: 0, row: 4, column: 2, expected: false }
       ],
       async ({ realm, row, column, expected }) => {
         const c1 = { realm: 0, row: 4, column: 2 };
@@ -736,6 +736,32 @@ describe("DaoVsDao", function () {
     const avgGasPrice = 150;
     const WEIToETH = (n: BigNumber) =>
       n.mul(avgGasPrice).div(BigNumber.from(10).pow(13)).toNumber() / 100000;
+
+    it("checking neighbors", async () => {
+      const c1 = { realm: 0, row: 4, column: 2 };
+      const coords = [
+        { realm: 0, row: 3, column: 0 },
+        { realm: 0, row: 3, column: 1 },
+        { realm: 0, row: 3, column: 2 },
+        { realm: 0, row: 3, column: 3 },
+        { realm: 0, row: 4, column: 0 },
+        { realm: 0, row: 4, column: 1 },
+        { realm: 0, row: 4, column: 3 },
+        { realm: 0, row: 4, column: 4 },
+        { realm: 0, row: 5, column: 1 },
+        { realm: 0, row: 5, column: 2 },
+        { realm: 0, row: 5, column: 3 },
+        { realm: 0, row: 5, column: 4 },
+        { realm: 1, row: 4, column: 1 },
+        { realm: 0, row: 4, column: 2 }
+      ];
+
+      let gasEstimate = 0;
+      for (const coord of coords)
+        gasEstimate += (await daoVsDao.estimateGas.isNeighbor(c1, coord)).toNumber();
+
+      console.log(`Gas estimate: ${gasEstimate}`);
+    });
 
     it("adding a row", async () => {
       // initialize

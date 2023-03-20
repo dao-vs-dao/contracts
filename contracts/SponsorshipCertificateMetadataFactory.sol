@@ -3,6 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
 
 import "./CertificateData.sol";
@@ -68,7 +69,7 @@ contract SponsorshipCertificateMetadataFactory is
   function generateName(uint256 _certificateId, bool closed) private pure returns (string memory) {
     string memory baseName = "DVD Sponsorship Certificate #";
     string memory redeemed = closed ? " - REEDEMED" : "";
-    return string(abi.encodePacked(baseName, _certificateId, redeemed));
+    return string(abi.encodePacked(baseName, Strings.toString(_certificateId), redeemed));
   }
 
   function generateDescription(
@@ -87,9 +88,9 @@ contract SponsorshipCertificateMetadataFactory is
       string(
         abi.encodePacked(
           "This certificate represents the ownership of ",
-          _data.shares,
+          Strings.toString(_data.shares),
           " shares in the sponsorship of ",
-          _data.receiver
+          Strings.toHexString(uint160(_data.receiver), 20)
         )
       );
   }
@@ -105,11 +106,11 @@ contract SponsorshipCertificateMetadataFactory is
       string(
         abi.encodePacked(
           "This certificate represented a participation in the sponsorship of ",
-          _data.receiver,
+          Strings.toHexString(uint160(_data.receiver), 20),
           " and has been redeemed with a ",
           profitLossText,
           " of ",
-          profitLossValue,
+          Strings.toString(profitLossValue),
           " DVD"
         )
       );
@@ -119,7 +120,7 @@ contract SponsorshipCertificateMetadataFactory is
     return
       string(
         abi.encodePacked(
-          '<svg viewBox="0 0 100 100"',
+          '<svg viewBox="0 0 100 100" ',
           'xmlns="http://www.w3.org/2000/svg">',
           '<rect width="100%" height="100%" fill="#000000"/>',
           '<polygon points="50,10 90,80 10,80" stroke="#FFFFFF" stroke-width="1">',
