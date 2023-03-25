@@ -14,10 +14,11 @@ describe("SponsorshipCertificate", function () {
   let owner: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
+  let user3: SignerWithAddress;
   let manager: SignerWithAddress;
 
   this.beforeEach(async () => {
-    [owner, user1, user2, manager] = await ethers.getSigners();
+    [owner, user1, user2, user3, manager] = await ethers.getSigners();
 
     const Contract = await ethers.getContractFactory("SponsorshipCertificate");
     sponsorshipCertificate = await upgrades.deployProxy(Contract, [], { kind: "uups" });
@@ -160,6 +161,76 @@ describe("SponsorshipCertificate", function () {
       const receipt = await tx.wait();
 
       expect(countEventsOfType(receipt, "CertificateRedeemed")).to.equal(1);
+    });
+  });
+
+  describe("getUserCertificates", function () {
+    it("will correctly detect owned certificates", async () => {
+      await sponsorshipCertificate.setSponsorshipCertificateManager(manager.address);
+
+      // create certificates
+      await sponsorshipCertificate
+        .connect(manager)
+        .emitCertificate(user1.address, user2.address, 15000, 9000);
+      await sponsorshipCertificate
+        .connect(manager)
+        .emitCertificate(user1.address, user3.address, 15000, 9000);
+      await sponsorshipCertificate
+        .connect(manager)
+        .emitCertificate(user2.address, user3.address, 15000, 9000);
+
+      // set back redeemer
+      await sponsorshipCertificate.setSponsorshipCertificateManager(redeemer.address);
+
+      // verify certificates for each user
+      const user1Certs = await sponsorshipCertificate.getUserCertificates(user1.address);
+      const user2Certs = await sponsorshipCertificate.getUserCertificates(user2.address);
+      const user3Certs = await sponsorshipCertificate.getUserCertificates(user3.address);
+
+      // user1 owns 2 and is beneficiary of 0
+      expect(user1Certs.owned.length).to.equal(2);
+      expect(user1Certs.beneficiary.length).to.equal(0);
+      // user2 owns 1 and is beneficiary of 1
+      expect(user2Certs.owned.length).to.equal(1);
+      expect(user2Certs.beneficiary.length).to.equal(1);
+      // user3 owns 0 and is beneficiary of 2
+      expect(user3Certs.owned.length).to.equal(0);
+      expect(user3Certs.beneficiary.length).to.equal(2);
+    });
+
+    it("will correctly detect owned certificates also when they are redeemed", async () => {
+      await sponsorshipCertificate.setSponsorshipCertificateManager(manager.address);
+
+      // create certificates
+      await sponsorshipCertificate
+        .connect(manager)
+        .emitCertificate(user1.address, user2.address, 15000, 9000);
+      await sponsorshipCertificate
+        .connect(manager)
+        .emitCertificate(user1.address, user2.address, 30000, 18000);
+      await sponsorshipCertificate
+        .connect(manager)
+        .emitCertificate(user1.address, user2.address, 45000, 27000);
+
+      // set back redeemer
+      await sponsorshipCertificate.setSponsorshipCertificateManager(redeemer.address);
+
+      // redeem multiple certificate
+      await sponsorshipCertificate.connect(user1).redeemCertificate(1);
+      await sponsorshipCertificate.connect(user1).redeemCertificate(3);
+
+      // verify users certificates
+      const user1Certs = await sponsorshipCertificate.getUserCertificates(user1.address);
+      const user2Certs = await sponsorshipCertificate.getUserCertificates(user2.address);
+
+      // user1 owns 3 and is beneficiary of 0
+      // >> redeemed certificates are still shown in the owned list
+      expect(user1Certs.owned.length).to.equal(3);
+      expect(user1Certs.beneficiary.length).to.equal(0);
+      // user2 owns 0 and is beneficiary of 1
+      // >> redeemed certificates are NOT shown anymore in the beneficiary list
+      expect(user2Certs.owned.length).to.equal(0);
+      expect(user2Certs.beneficiary.length).to.equal(1);
     });
   });
 });

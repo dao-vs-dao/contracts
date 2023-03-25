@@ -12,4 +12,11 @@ contract TestCertificateRedeemer is ISponsorshipRedeemer {
   ) external pure override returns (uint256) {
     return 1000;
   }
+
+  /**
+   * Calculate how much some shares are now worth.
+   */
+  function worthOfSponsorshipShares(address, uint256) external pure override returns (uint256) {
+    return 1000;
+  }
 }

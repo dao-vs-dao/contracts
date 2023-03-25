@@ -207,6 +207,18 @@ contract DaoVsDao is
       );
   }
 
+  /**
+   * Calculate how much some shares are now worth.
+   * @param _sponsored The user that received the sponsorship
+   * @param _shares The amount of shares to be redeemed
+   */
+  function worthOfSponsorshipShares(
+    address _sponsored,
+    uint256 _shares
+  ) external view override returns (uint256) {
+    return (sponsorships[_sponsored] * _shares) / sponsorshipShares[_sponsored];
+  }
+
   /* ========== SETTERS ========== */
 
   /** Set the sponsorship certificate emitter */

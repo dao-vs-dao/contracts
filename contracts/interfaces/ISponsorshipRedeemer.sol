@@ -13,4 +13,14 @@ interface ISponsorshipRedeemer {
     address _receiver,
     uint256 _shares
   ) external returns (uint256);
+
+  /**
+   * Calculate how much some shares are now worth.
+   * @param _sponsored The user that received the sponsorship
+   * @param _shares The amount of shares to be redeemed
+   */
+  function worthOfSponsorshipShares(
+    address _sponsored,
+    uint256 _shares
+  ) external view returns (uint256);
 }

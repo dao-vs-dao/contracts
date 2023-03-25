@@ -12,6 +12,7 @@ import "./interfaces/ISponsorshipCertificate.sol";
 import "./interfaces/ISponsorshipRedeemer.sol";
 import "./SponsorshipCertificateStorage.sol";
 import "./interfaces/ISponsorshipCertificateMetadataFactory.sol";
+import "./helpers/CertificateTargetEnumerable.sol";
 
 contract SponsorshipCertificate is
   IERC4906,
@@ -19,7 +20,8 @@ contract SponsorshipCertificate is
   OwnableUpgradeable,
   UUPSUpgradeable,
   ERC721EnumerableUpgradeable,
-  SponsorshipCertificateStorageV1
+  SponsorshipCertificateStorageV1,
+  CertificateTargetEnumerable
 {
   using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -78,6 +80,40 @@ contract SponsorshipCertificate is
       super.supportsInterface(interfaceId);
   }
 
+  /**
+   * Retrieve the certificates relative to the user, both owned and the ones it is beneficiary of.
+   * @param _user The address to verify.
+   */
+  function getUserCertificates(
+    address _user
+  ) external view returns (CertificateView[] memory owned, CertificateView[] memory beneficiary) {
+    // retrieve certificates owned by user
+    uint256 balance = balanceOf(_user);
+    CertificateView[] memory ownedCertificates = new CertificateView[](balance);
+    for (uint256 i; i < balance; ++i) {
+      uint256 tokenId = tokenOfOwnerByIndex(_user, i);
+      ownedCertificates[i] = CertificateViewFromCertificateData(
+        tokenId,
+        certificateData[tokenId],
+        _user
+      );
+    }
+
+    // retrieve certificates targeting the user
+    uint256 linked = linkedTokens(_user);
+    CertificateView[] memory linkedCertificates = new CertificateView[](linked);
+    for (uint256 i; i < linked; ++i) {
+      uint256 tokenId = linkedTokenByIndex(_user, i);
+      linkedCertificates[i] = CertificateViewFromCertificateData(
+        tokenId,
+        certificateData[tokenId],
+        ownerOf(tokenId)
+      );
+    }
+
+    return (ownedCertificates, linkedCertificates);
+  }
+
   /* ========== SETTERS ========== */
 
   /** Set the sponsorship certificate manager */
@@ -116,6 +152,7 @@ contract SponsorshipCertificate is
     _tokenIds.increment();
     uint256 certificateId = _tokenIds.current();
     _safeMint(_sponsor, certificateId);
+    linkTokenToAddress(_receiver, certificateId);
 
     // store the certificate data
     certificateData[certificateId] = CertificateData(_receiver, _amount, 0, _shares, false);
@@ -141,8 +178,36 @@ contract SponsorshipCertificate is
     // update the certificate
     certificateData[certificateId].redeemed = redeemedAmount;
     certificateData[certificateId].closed = true;
+    unlinkTokenFromAddress(data.receiver, certificateId);
 
     emit MetadataUpdate(certificateId);
     emit CertificateRedeemed(msg.sender, data.receiver, data.amount, redeemedAmount, certificateId);
+  }
+
+  /* ========== PRIVATE FUNCTIONS ========== */
+
+  function CertificateViewFromCertificateData(
+    uint256 id,
+    CertificateData storage cert,
+    address owner
+  ) private view returns (CertificateView memory) {
+    CertificateData memory memoryCert = cert;
+    uint256 certificateWorth = memoryCert.closed // if the certificate has been closed, the redeemed amount is known
+      ? memoryCert.redeemed // otherwise, we calculate how much the shares are not worth
+      : ISponsorshipRedeemer(sponsorshipManager).worthOfSponsorshipShares(
+        memoryCert.receiver,
+        memoryCert.shares
+      );
+
+    return
+      CertificateView(
+        id,
+        owner,
+        memoryCert.receiver,
+        memoryCert.amount,
+        certificateWorth,
+        memoryCert.shares,
+        memoryCert.closed
+      );
   }
 }
