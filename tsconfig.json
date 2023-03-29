@@ -6,7 +6,9 @@
     "esModuleInterop": true,
     "outDir": "dist",
     "sourceMap": true,
-    "declaration": true
+    "declaration": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
   },
   "include": ["./test", "./src", "./scripts", "./lib", "./tasks",],
   "exclude": ["node_modules/**/*"],
