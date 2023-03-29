@@ -94,17 +94,18 @@ contract DaoVsDao is
 
     address[] memory neighbors = new address[](6);
     address[][] memory realm = lands[coords.realm];
+    bool isNotFirstColumn = coords.column > 0;
+    bool isNotLastColumn = coords.column < realm[coords.row].length - 1;
 
     // add top row neighbors
     if (coords.row > 0) {
-      if (coords.column > 0) neighbors[0] = realm[coords.row - 1][coords.column - 1];
-      neighbors[1] = realm[coords.row - 1][coords.column];
+      if (isNotFirstColumn) neighbors[0] = realm[coords.row - 1][coords.column - 1];
+      if (isNotLastColumn) neighbors[1] = realm[coords.row - 1][coords.column];
     }
 
     // add same row neighbors
-    if (coords.column > 0) neighbors[2] = realm[coords.row][coords.column - 1];
-    if (coords.column < realm[coords.row].length - 1)
-      neighbors[3] = realm[coords.row][coords.column + 1];
+    if (isNotFirstColumn) neighbors[2] = realm[coords.row][coords.column - 1];
+    if (isNotLastColumn) neighbors[3] = realm[coords.row][coords.column + 1];
 
     // add bottom row neighbors
     if (coords.row < realm.length - 1) {

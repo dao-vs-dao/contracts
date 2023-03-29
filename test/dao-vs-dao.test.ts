@@ -359,6 +359,74 @@ describe("DaoVsDao", function () {
     });
   });
 
+  describe("getNeighboringAddresses ", function () {
+    it("will add the user in the expected location", async () => {
+      await daoVsDao.addRealm();
+      const [_, user1, user2, user3, user4, user5] = await ethers.getSigners();
+
+      await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user2)
+        .placeUser({ realm: 0, row: 1, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user3)
+        .placeUser({ realm: 0, row: 1, column: 1 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user4)
+        .placeUser({ realm: 0, row: 2, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      await daoVsDao
+        .connect(user5)
+        .placeUser({ realm: 0, row: 2, column: 1 }, zeroAddress, { value: parseEther("0.5") });
+
+      expect(await daoVsDao.getNeighboringAddresses(user1.address)).to.deep.equal([
+        zeroAddress,
+        zeroAddress,
+        zeroAddress,
+        zeroAddress,
+        user2.address,
+        user3.address
+      ]);
+
+      expect(await daoVsDao.getNeighboringAddresses(user2.address)).to.deep.equal([
+        zeroAddress,
+        user1.address,
+        zeroAddress,
+        user3.address,
+        user4.address,
+        user5.address
+      ]);
+
+      expect(await daoVsDao.getNeighboringAddresses(user3.address)).to.deep.equal([
+        user1.address,
+        zeroAddress,
+        user2.address,
+        zeroAddress,
+        user5.address,
+        zeroAddress,
+      ]);
+
+      expect(await daoVsDao.getNeighboringAddresses(user4.address)).to.deep.equal([
+        zeroAddress,
+        user2.address,
+        zeroAddress,
+        user5.address,
+        zeroAddress,
+        zeroAddress,
+      ]);
+
+      expect(await daoVsDao.getNeighboringAddresses(user5.address)).to.deep.equal([
+        user2.address,
+        user3.address,
+        user4.address,
+        zeroAddress,
+        zeroAddress,
+        zeroAddress,
+      ]);
+    });
+  });
+
   describe("swap", function () {
     this.beforeEach(async () => {
       // add a realm and three users in it
