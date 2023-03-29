@@ -58,6 +58,13 @@ describe("DaoVsDao", function () {
       expect(gameData.players).to.deep.equal([]);
     });
 
+    it("adding new realms triggers an event", async () => {
+      const tx = await daoVsDao.addRealm();
+      const receipt = await tx.wait();
+
+      expect(countEventsOfType(receipt, "RealmAdded")).to.equal(1);
+    });
+
     it("random user adding a realm will throw an error", async () => {
       await expect(daoVsDao.connect(user1).addRealm()).to.be.revertedWith(
         "Ownable: caller is not the owner"
@@ -234,6 +241,17 @@ describe("DaoVsDao", function () {
 
       const gameData = await daoVsDao.getGameData();
       expect(gameData.lands).to.deep.equal([[[user1.address], [zeroAddress, zeroAddress]]]);
+    });
+
+    it("placing users triggers an event", async () => {
+      await daoVsDao.addRealm();
+
+      const tx = await daoVsDao
+        .connect(user1)
+        .placeUser({ realm: 0, row: 0, column: 0 }, zeroAddress, { value: parseEther("0.5") });
+      const receipt = await tx.wait();
+
+      expect(countEventsOfType(receipt, "UserPlaced")).to.equal(1);
     });
 
     it("will automatically add a row if the pyramid is full", async () => {

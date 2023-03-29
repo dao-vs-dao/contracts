@@ -41,6 +41,9 @@ contract DaoVsDao is
   event SlashingTaxUpdated(uint256 newSlashingTax);
   event ParticipationFeeUpdated(uint256 newParticipationFee);
   event PercentageForReferrerUpdated(uint256 newPercentageForReferrer);
+  event RealmAdded(uint256 realm);
+  event RowAdded(uint256 realm, uint256 row);
+  event UserPlaced(address indexed user, address indexed referrer, Coordinates _coord, uint usersCount);
   event Slashed(
     address indexed attacker,
     address indexed attacked,
@@ -259,6 +262,7 @@ contract DaoVsDao is
   /** Add a new 1x1 realm to the lands matrix */
   function addRealm() external onlyOwner {
     lands.push([[0x0000000000000000000000000000000000000000]]);
+    emit RealmAdded(lands.length - 1);
   }
 
   /** Add a new row to the specified realm. The row length will be equal to the previous + 1 */
@@ -266,6 +270,7 @@ contract DaoVsDao is
     address[][] memory _chosenRealm = lands[_realm];
     uint256 latestRowLength = _chosenRealm[_chosenRealm.length - 1].length;
     lands[_realm].push(new address[](latestRowLength + 1));
+    emit RowAdded(_realm, latestRowLength);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -292,6 +297,7 @@ contract DaoVsDao is
     userCoord[msg.sender] = _coord;
     latestClaim[msg.sender] = block.timestamp;
     ++nrPlayers;
+    emit UserPlaced(msg.sender, _referrer, _coord, nrPlayers);
 
     // check if adding a new row is required
     uint256 nrRows = _chosenRealm.length;
@@ -301,6 +307,7 @@ contract DaoVsDao is
     // add new row
     uint256 latestRowLength = _chosenRealm[_chosenRealm.length - 1].length;
     lands[_coord.realm].push(new address[](latestRowLength + 1));
+    emit RowAdded(_coord.realm, latestRowLength);
   }
 
   /**
